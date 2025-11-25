@@ -1,4 +1,6 @@
 这是游戏《逃离鸭科夫》的一款Mod。This is a Mod of the game Escape from Duckov.
+订阅：Subscribe at:
+https://steamcommunity.com/sharedfiles/filedetails/?id=3612302587
 
 显示物品的数量和具体路径，包括：
 
