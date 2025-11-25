@@ -54,7 +54,7 @@ namespace WhereAreMyItems
                     path.Add(ShortMessage.PetBackpack.GetTranslation());
                     break;
                 }
-                else if (currentNode.InInventory == s_storageInventory)
+                else if (s_IsStorageAvailable && currentNode.InInventory == s_storageInventory)
                 {
                     path.Add(ShortMessage.Warehouse.GetTranslation());
                     break;
