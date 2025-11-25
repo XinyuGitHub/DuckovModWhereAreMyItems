@@ -2,6 +2,7 @@
 using Duckov.Utilities;
 using ItemStatsSystem;
 using TMPro;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -9,26 +10,24 @@ namespace WhereAreMyItems
 {
     public class ModBehaviour : Duckov.Modding.ModBehaviour
     {
-        private static GameObject s_uiParent = null;
-        private static TextMeshProUGUI s_textLeft = null;
-        private static TextMeshProUGUI s_spaceMiddle = null;
-        private static TextMeshProUGUI s_textRight = null;
-        private bool m_showDetailInformation = true;
+        private static TextMeshProUGUI s_textMeshPro = null;
+        private bool m_showDetails = true;
         private Item m_currentItem = null;
         private float m_lastShiftPressedTime = Time.time;
+        private ItemHoveringUI m_currentItemHoveringUI = null;
 
         private void Awake()
         {
+            m_tryCreateUI();
             Debug.Log("[WhereAreMyItems] Mod Loaded");
-            m_recreateUI();
         }
 
         private void OnEnable()
         {
-            Debug.Log("[WhereAreMyItems] Mod Enabled");
             ItemHoveringUI.onSetupItem += m_onSetupItemHoveringUI;
             ItemHoveringUI.onSetupMeta += m_onSetupMeta;
             Utils.s_Prepare();
+            Debug.Log("[WhereAreMyItems] Mod Enabled");
         }
 
         private void Update()
@@ -38,16 +37,16 @@ namespace WhereAreMyItems
 
         private void OnDisable()
         {
-            Debug.Log("[WhereAreMyItems] Mod Disabled");
             ItemHoveringUI.onSetupItem -= m_onSetupItemHoveringUI;
             ItemHoveringUI.onSetupMeta -= m_onSetupMeta;
+            Debug.Log("[WhereAreMyItems] Mod Disabled");
         }
 
         private void OnDestroy()
         {
+            if (s_textMeshPro.gameObject != null)
+                Destroy(s_textMeshPro.gameObject);
             Debug.Log("[WhereAreMyItems] Mod Destroied");
-            if (s_uiParent != null)
-                Destroy(s_uiParent);
         }
 
         private void m_tickShiftButton()
@@ -55,7 +54,7 @@ namespace WhereAreMyItems
             if (Time.time - m_lastShiftPressedTime < 0.5f)
                 return;
 
-            if (m_currentItem == null || !s_uiParent.activeInHierarchy)
+            if (m_currentItem == null || !s_textMeshPro.gameObject.activeInHierarchy)
                 return;
 
             var isShiftHeld = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
@@ -63,105 +62,62 @@ namespace WhereAreMyItems
                 return;
 
             m_lastShiftPressedTime = Time.time;
-            m_showDetailInformation = !m_showDetailInformation;
+            m_showDetails = !m_showDetails;
             m_refreshItemInformation();
-            Debug.Log($"[WhereAreMyItems] Show Detail Toggled: {m_showDetailInformation}");
+            Debug.Log($"[WhereAreMyItems] Show Detail Toggled: {m_showDetails}");
         }
 
-        private void m_recreateUI()
+        private void m_tryCreateUI()
         {
-            if (s_uiParent != null)
-                Destroy(s_uiParent);
-
-            s_uiParent = new GameObject("UIParent", typeof(RectTransform));
-            s_uiParent.SetActive(false);
-
-            var hlg = s_uiParent.AddComponent<HorizontalLayoutGroup>();
-            hlg.childAlignment = TextAnchor.UpperLeft;
-            hlg.childControlWidth = false;
-            hlg.childControlHeight = false;
-            hlg.childForceExpandWidth = true;
-            hlg.childForceExpandHeight = true;
-
-            s_textLeft = Instantiate(GameplayDataSettings.UIStyle.TemplateTextUGUI, s_uiParent.transform);
-            s_textLeft.name = "TextLeft";
-            s_textLeft.alignment = TextAlignmentOptions.Left;
-            s_textLeft.fontSize = 18;
-            m_addFitterAndElement(s_textLeft.gameObject);
-
-            s_spaceMiddle = Instantiate(GameplayDataSettings.UIStyle.TemplateTextUGUI, s_uiParent.transform);
-            s_spaceMiddle.name = "SpaceMiddle";
-            var middleLayoutElement = s_spaceMiddle.gameObject.AddComponent<LayoutElement>();
-            middleLayoutElement.minWidth = 1;
-            middleLayoutElement.flexibleWidth = 1;
-
-            s_textRight = Instantiate(GameplayDataSettings.UIStyle.TemplateTextUGUI, s_uiParent.transform);
-            s_textRight.name = "TextRight";
-            s_textRight.alignment = TextAlignmentOptions.Right;
-            s_textRight.fontSize = 18;
-            m_addFitterAndElement(s_textRight.gameObject);
-            Debug.Log("[WhereAreMyItems] UI Recreated.");
-        }
-
-        private void m_addFitterAndElement(GameObject gameObject)
-        {
-            if (gameObject == null)
+            if (s_textMeshPro != null)
                 return;
 
+            s_textMeshPro = Instantiate(GameplayDataSettings.UIStyle.TemplateTextUGUI);
             var fitter = gameObject.AddComponent<ContentSizeFitter>();
             fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
             fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
             var layoutElement = gameObject.AddComponent<LayoutElement>();
             layoutElement.minWidth = 20f;
             layoutElement.flexibleWidth = 0f;
+            Debug.Log("[WhereAreMyItems] UI Recreated");
         }
 
         private void m_onSetupMeta(ItemHoveringUI ui, ItemMetaData data)
         {
-            if (s_uiParent == null)
-                m_recreateUI();
-
-            s_uiParent?.SetActive(false);
+            s_textMeshPro?.gameObject?.SetActive(false);
         }
 
-        private ItemHoveringUI m_currentItemHoveringUI = null;
+
         private void m_onSetupItemHoveringUI(ItemHoveringUI ui, Item item)
         {
-            Debug.Log($"[WhereAreMyItems] Trying to Show Item: {item.TypeID}");
-            if (s_uiParent == null)
-                m_recreateUI();
-
-            if (s_uiParent == null)
-                return;
+            m_tryCreateUI();
 
             if (ui == null || item == null)
-            {
-                s_uiParent.SetActive(false);
                 return;
-            }
-
-            if (s_uiParent.transform.parent != ui.LayoutParent)
-            {
-                s_uiParent.transform.SetParent(ui.LayoutParent, false);
-                s_uiParent.transform.localScale = Vector3.one;
-                s_uiParent.transform.SetAsLastSibling();
-            }
 
             m_currentItemHoveringUI = ui;
             m_currentItem = item;
+
+            if (s_textMeshPro.transform.parent != ui.LayoutParent)
+            {
+                s_textMeshPro.transform.SetParent(ui.LayoutParent, false);
+                s_textMeshPro.transform.localScale = Vector3.one;
+                s_textMeshPro.transform.SetAsLastSibling();
+                s_textMeshPro.fontSize = 16;
+            }
+
             m_refreshItemInformation();
+            s_textMeshPro.gameObject.SetActive(true);
+            Debug.Log($"[WhereAreMyItems] Showing Item: {item.TypeID}");
         }
 
         private void m_refreshItemInformation()
         {
-            s_uiParent?.SetActive(true);
-            Utils.s_RefreshItemInformation(m_currentItem, m_showDetailInformation);
-            s_textLeft.SetText(Utils.s_GetLeftText());
-            s_textRight.SetText(Utils.s_GetRightText());
-            LayoutRebuilder.ForceRebuildLayoutImmediate(m_currentItemHoveringUI.LayoutParent);
-            s_textLeft.ForceMeshUpdate(true, true);
-            s_textRight.ForceMeshUpdate(true, true);
+            Logic.s_RefreshItemInformation(m_currentItem.TypeID, m_showDetails);
+            s_textMeshPro.SetText(Logic.s_GetText());
+            //layoutrebuilder.forcerebuildlayoutimmediate(m_currentitemhoveringui.layoutparent);
+            //s_textleft.forcemeshupdate(true, true);
+            Debug.Log($"[WhereAreMyItems] Refreshed Item: {m_currentItem.TypeID}");
         }
     }
 }
